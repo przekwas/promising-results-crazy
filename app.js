@@ -1,4 +1,7 @@
+// array of color names for tailwind class names
 const colors = ['red', 'yellow', 'green', 'blue', 'indigo', 'purple', 'pink'];
+
+// the lab steps abstracted to an array of objects
 const maths = [
 	{ type: 'add', operand: 2 },
 	{ type: 'multiply', operand: 2 },
@@ -10,46 +13,49 @@ const maths = [
 	{ type: 'remainder', operand: 40 },
 	{ type: 'add', operand: 32 }
 ];
-let prevResult = 6,
-	mathsIdx = 0;
 
-slowMath[maths[mathsIdx].type](prevResult, maths[mathsIdx].operand)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.then(handleSlowMath)
-	.catch(handleError);
+// since promise.then syntax is locally scoped args
+// we use some globals we update to act as temp placeholders
+// for outputting the previous promise operation
+let prevResult = 6;
 
-function handleSlowMath(result) {
-	if (mathsIdx >= maths.length - 1) {
-		console.log('[opIdx]', mathsIdx);
-		makeCard({
-			result,
-			maf: `${maths[mathsIdx - 1].type} ${prevResult} and ${maths[mathsIdx - 1].operand} is`
-		});
-		return;
-	}
+let p = Promise.resolve();
+maths.forEach(({ type, operand }, idx) => {
+	p = p.then(
+		() =>
+			new Promise((resolve, reject) => {
+				slowMath[type](prevResult, operand)
+					.then(result => {
+						handleSlowMath({ result, type, operand, idx });
+						resolve();
+					})
+					.catch(handleError);
+			})
+	);
+});
 
+function handleSlowMath({ result, type, operand, idx }) {
 	makeCard({
+		idx,
 		result,
-		maf: `${maths[mathsIdx].type} ${prevResult} and ${maths[mathsIdx].operand} is`
+		maf: `${type} ${prevResult} and ${operand} is`
 	});
+
 	prevResult = result;
-	mathsIdx++;
-	return slowMath[maths[mathsIdx].type](result, maths[mathsIdx].operand);
+	return;
 }
 
 function handleError(e) {
 	console.error('[error]', e.message);
+	Swal.fire({
+		icon: 'error',
+		title: "Promise Rejected",
+		text: e.message
+	});
 }
 
-function makeCard({ maf, result }) {
-	const random = colors[Math.floor(Math.random() * colors.length)];
+function makeCard({ maf, result, idx }) {
+	const random = colors[idx % colors.length];
 	$(`
 	<div class="w-full overflow-hidden md:w-1/2 lg:w-1/3 xl:w-1/4" id="fade">
 		<div
